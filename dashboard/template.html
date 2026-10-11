@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Content Agent Dashboard</title>
+<style>
+:root{--bg:#fff;--fg:#14141a;--card:#f4f4f7;--mut:#6b6b78;--acc:#7c3aed;--bar:#b9b9c6}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e14;--fg:#f1f1f5;--card:#191922;--mut:#9a9aa8;--acc:#a78bfa;--bar:#4a4a5c}}
+*{box-sizing:border-box}
+body{margin:0 auto;padding:16px;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif;line-height:1.45;max-width:760px}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--mut);font-size:13px;margin-bottom:12px}
+.card{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.card h2{font-size:15px;margin:2px 0 8px}
+.tag{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+ul{margin:0;padding-left:18px}
+li{margin-bottom:6px;font-size:14px}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px}
+.lbl{width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trk{flex:1;background:rgba(128,128,128,.15);border-radius:6px;height:16px}
+.bar{height:16px;border-radius:6px;background:var(--bar)}
+.bar.me{background:var(--acc)}
+.val{width:56px;text-align:right}
+</style></head><body>
+<h1>Content Agent</h1>
+<div class="sub">Data pulled: <span id="dt"></span></div>
+<div class="card"><span class="tag">Overview</span><h2>Typical plays per Reel</h2><div id="chart"></div></div>
+<div class="card"><span class="tag">Ideator</span><h2>Ideas from top competitor Reels</h2><ul id="ideas"></ul></div>
+<div class="card"><span class="tag">Hook &amp; Script</span><h2>Draft hook lines</h2><ul id="hooks"></ul></div>
+<div class="card"><span class="tag">Planner</span><h2>Best days to post (UTC)</h2><ul id="plan"></ul></div>
+<div class="card"><span class="tag">Analyst</span><h2>Your account</h2><ul id="ana"></ul></div>
+<div class="card"><span class="tag">DM Manager</span><h2>Waiting for access</h2><div class="sub" style="margin:0">No Instagram DM connection yet.</div></div>
+<script>
+const D = __DATA__;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const f=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':String(n);
+const li=a=>a.filter(Boolean).map(x=>'<li>'+x+'</li>').join('');
+$('dt').textContent=D.date+' · '+D.n+' posts'+(D.missing.length?' · not found: '+D.missing.map(esc).join(', '):'');
+const names=Object.keys(D.acc).sort((a,b)=>D.acc[b].med-D.acc[a].med);
+const mx=Math.log10(Math.max(...names.map(u=>D.acc[u].med),10)+1);
+$('chart').innerHTML=names.map(u=>{const a=D.acc[u];const w=Math.max(2,Math.log10(a.med+1)/mx*100);
+return `<div class="row"><div class="lbl">@${esc(u)}</div><div class="trk"><div class="bar ${a.me?'me':''}" style="width:${w}%"></div></div><div class="val">${f(a.med)}</div></div>`}).join('')+'<div class="sub">Log scale. Purple bar = you.</div>';
+$('ideas').innerHTML=li(D.top.slice(0,3).map(t=>`<b>@${esc(t.u)}</b> got ${f(t.pl)} plays: ${esc(t.c)}`).concat(D.dur?[`Top Reels run about ${D.dur} sec.`]:[]));
+const starts=['Open with the payoff in the first second: ','Start with a bold claim, like ','Try a ranking-style opener inspired by '];
+$('hooks').innerHTML=li(D.top.slice(0,3).map((t,i)=>starts[i]+'"'+esc(t.c.slice(0,50))+'..."'));
+const days=Object.entries(D.wd).sort((a,b)=>b[1]-a[1]).slice(0,3);
+$('plan').innerHTML=days.length?li(days.map(d=>`<b>${esc(d[0])}</b>: typical ${f(d[1])} plays`)):'<li>Not enough data yet.</li>';
+const k=Object.keys(D.acc).find(u=>D.acc[u].me), m=k?D.acc[k]:null;
+$('ana').innerHTML=m?li([`${m.n} Reels tracked`,`Typical: <b>${f(m.med)}</b> plays, best: <b>${f(m.best)}</b>`,D.my.length?`Last post: ${esc(D.my[D.my.length-1].d)}`:'']):'<li>No posts found for your account.</li>';
+</script></body></html>
